@@ -1,0 +1,6 @@
+# Use instead of compose.local.yaml on a host where 80/443 are free.
+services:
+  traefik:
+    ports:
+      - '127.0.0.1:80:80'
+      - '127.0.0.1:443:443'

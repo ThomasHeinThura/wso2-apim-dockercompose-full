@@ -1,0 +1,31 @@
+http:
+  routers:
+    cp:
+      rule: Host(`apim.example.com`)
+      entryPoints: [websecure]
+      service: cp
+      tls: {}
+    gateway:
+      rule: Host(`api.example.com`)
+      entryPoints: [websecure]
+      service: gateway
+      tls: {}
+  services:
+    cp:
+      loadBalancer:
+        serversTransport: wso2
+        servers:
+          - url: https://apim:9443
+    gateway:
+      loadBalancer:
+        serversTransport: wso2
+        servers:
+          - url: https://apim:8243
+  serversTransports:
+    wso2:
+      insecureSkipVerify: true
+# The local WSO2 image has a self-signed upstream certificate.
+tls:
+  certificates:
+    - certFile: /certs/bimats.crt
+      keyFile: /certs/bimats.key

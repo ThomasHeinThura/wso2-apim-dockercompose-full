@@ -1,0 +1,4 @@
+*
+!Dockerfile
+!vendor/
+!vendor/postgresql-42.7.14.jar

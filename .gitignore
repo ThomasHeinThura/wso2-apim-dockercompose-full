@@ -1,0 +1,7 @@
+.env
+certs/*.key
+certs/*.crt
+vendor/*.jar
+__pycache__/
+test-results.txt
+.DS_Store

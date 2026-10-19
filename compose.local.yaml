@@ -1,0 +1,18 @@
+# Reuse the existing local edge Traefik without modifying its files or ports.
+services:
+  traefik:
+    networks:
+      backend: {}
+      edge: {}
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: taskdesk
+      traefik.tcp.routers.bimats-apim.rule: 'HostSNI(`apim.example.com`) || HostSNI(`api.example.com`)'
+      traefik.tcp.routers.bimats-apim.entrypoints: websecure
+      traefik.tcp.routers.bimats-apim.tls.passthrough: 'true'
+      traefik.tcp.routers.bimats-apim.service: bimats-apim
+      traefik.tcp.services.bimats-apim.loadbalancer.server.port: '443'
+networks:
+  edge:
+    external: true
+    name: taskdesk

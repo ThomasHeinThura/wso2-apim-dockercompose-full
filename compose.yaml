@@ -1,0 +1,70 @@
+name: bimats-apim
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: wso2
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: postgres
+      TZ: UTC
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init/00-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
+      - ./postgres/init/shared.sql:/schemas/shared.sql:ro
+      - ./postgres/init/apim.sql:/schemas/apim.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U wso2 -d apim_db']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    networks: [backend]
+  apim:
+    build: .
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APIM_ADMIN_PASSWORD: ${APIM_ADMIN_PASSWORD:?Set APIM_ADMIN_PASSWORD in .env}
+      APIM_ENCRYPTION_KEY: ${APIM_ENCRYPTION_KEY:?Set APIM_ENCRYPTION_KEY in .env}
+      JVM_MEM_OPTS: '-Xms1024m -Xmx2048m'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./config/deployment.toml:/home/wso2carbon/wso2am-4.7.0/repository/conf/deployment.toml:ro
+      - ./config/publisher-settings.json:/home/wso2carbon/wso2am-4.7.0/repository/deployment/server/webapps/publisher/site/public/conf/settings.json:ro
+      - ./config/devportal-settings.json:/home/wso2carbon/wso2am-4.7.0/repository/deployment/server/webapps/devportal/site/public/theme/settings.json:ro
+      - ./config/admin-settings.json:/home/wso2carbon/wso2am-4.7.0/repository/deployment/server/webapps/admin/site/public/conf/settings.json:ro
+      - apim-synapse:/home/wso2carbon/wso2am-4.7.0/repository/deployment/server/synapse-configs
+      - apim-executionplans:/home/wso2carbon/wso2am-4.7.0/repository/deployment/server/executionplans
+      - apim-local-db:/home/wso2carbon/wso2am-4.7.0/repository/database
+    healthcheck:
+      test: [CMD-SHELL, 'curl -fkSs https://localhost:9443/services/Version >/dev/null']
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 90s
+    restart: unless-stopped
+    networks: [backend]
+  traefik:
+    image: traefik:v3.7.13
+    command:
+      - --global.sendanonymoususage=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --providers.file.filename=/etc/traefik/dynamic.yaml
+      - --accesslog=true
+      - --log.level=INFO
+    volumes:
+      - ./traefik/dynamic.yaml:/etc/traefik/dynamic.yaml:ro
+      - ./certs:/certs:ro
+    restart: unless-stopped
+    networks: [backend]
+volumes:
+  postgres-data:
+  apim-synapse:
+  apim-executionplans:
+  apim-local-db:
+networks:
+  backend:
